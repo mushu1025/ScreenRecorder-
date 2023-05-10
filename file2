@@ -1,0 +1,105 @@
+import java.awt.AWTException;
+import java.awt.Dimension;
+import java.awt.Rectangle;
+import java.awt.Robot;
+import java.awt.Toolkit;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
+
+import javax.imageio.ImageIO;
+import javax.sound.sampled.AudioFileFormat;
+import javax.sound.sampled.AudioFormat;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.DataLine;
+import javax.sound.sampled.Mixer;
+import javax.sound.sampled.TargetDataLine;
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JPanel;
+
+public class ScreenRecorder extends JFrame {
+
+    private static final long serialVersionUID = 1L;
+    private JPanel contentPane;
+    private JButton startButton;
+    private JButton stopButton;
+    private boolean recording = false;
+    private int frameCount = 0;
+    private TargetDataLine audioLine;
+
+    public static void main(String[] args) {
+        ScreenRecorder frame = new ScreenRecorder();
+        frame.setVisible(true);
+    }
+
+    public ScreenRecorder() {
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setBounds(100, 100, 300, 200);
+        setTitle("Screen Recorder");
+
+        contentPane = new JPanel();
+        setContentPane(contentPane);
+        contentPane.setLayout(null);
+
+        startButton = new JButton("Start");
+        startButton.setBounds(50, 50, 80, 30);
+        startButton.addActionListener(e -> startRecording());
+        contentPane.add(startButton);
+
+        stopButton = new JButton("Stop");
+        stopButton.setBounds(150, 50, 80, 30);
+        stopButton.addActionListener(e -> stopRecording());
+        contentPane.add(stopButton);
+    }
+
+    private void startRecording() {
+        try {
+            // 获取屏幕分辨率
+            Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+            int width = (int) screenSize.getWidth();
+            int height = (int) screenSize.getHeight();
+
+            // 创建录制视频的输出文件
+            File videoFile = new File("output.mp4");
+
+            // 创建录制音频的输出文件
+            File audioFile = new File("output.wav");
+
+            // 设置音频格式
+            AudioFormat audioFormat = new AudioFormat(44100, 16, 2, true, false);
+
+            // 获取音频输入设备
+            Mixer.Info[] mixerInfo = AudioSystem.getMixerInfo();
+            Mixer mixer = AudioSystem.getMixer(mixerInfo[0]);
+
+            DataLine.Info dataLineInfo = new DataLine.Info(TargetDataLine.class, audioFormat);
+            audioLine = (TargetDataLine) mixer.getLine(dataLineInfo);
+            audioLine.open(audioFormat);
+            audioLine.start();
+
+            // 创建音频输入流
+            AudioInputStream audioInputStream = new AudioInputStream(audioLine);
+
+            // 创建视频编码器
+            VideoEncoder encoder = new VideoEncoder(width, height, videoFile);
+
+            // 开始录制视频
+            encoder.start();
+
+            // 开始录制音频
+            AudioSystem.write(audioInputStream, AudioFileFormat.Type.WAVE, audioFile);
+
+            recording = true;
+            while (recording) {
+                // 捕获屏幕
+                BufferedImage image = new Robot().createScreenCapture(new Rectangle(width, height));
+
+                // 编码并写入视频
+                encoder.encodeImage(image);
+
+                // 计数
+                frameCount++;
+            }
+
+            // 停止录制音频

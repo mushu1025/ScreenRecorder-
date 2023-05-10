@@ -1,0 +1,7 @@
+<dependencies>
+    <dependency>
+        <groupId>com.github.axet</groupId>
+        <artifactId>screen-recorder</artifactId>
+        <version>0.12</version>
+    </dependency>
+</dependencies>
